@@ -1,5 +1,6 @@
 package com.cni.model;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -30,9 +31,10 @@ public class UserDetailsImpl implements UserDetails {
 	}
 
 	public static UserDetailsImpl build(User user) {
-		List<GrantedAuthority> authorities = user.getRoles().stream()
-				.map(role -> new SimpleGrantedAuthority(role.getName().name())).collect(Collectors.toList());
-		return new UserDetailsImpl(user.getId(), user.getEmail(), user.getFirstName(), user.getPassword(), authorities);
+		List<GrantedAuthority> authority = new ArrayList<GrantedAuthority>();
+		authority.add(
+				new SimpleGrantedAuthority(user.getRole().getName().name()));
+		return new UserDetailsImpl(user.getId(), user.getEmail(), user.getFirstName(), user.getPassword(), authority);
 	}
 
 	@Override
