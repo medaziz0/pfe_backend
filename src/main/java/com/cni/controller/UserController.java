@@ -2,6 +2,7 @@ package com.cni.controller;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -15,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,8 +33,6 @@ import com.cni.model.User;
 import com.cni.model.UserDetailsImpl;
 import com.cni.repository.RoleRepository;
 import com.cni.repository.UserRepository;
-
-
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -51,16 +51,26 @@ public class UserController {
 
 	@PostMapping("/login")
 	public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
-		Authentication authentication = authenticationManager.authenticate(
-				new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
-		SecurityContextHolder.getContext().setAuthentication(authentication);
-		String jwt = jwtUtils.generateJwtToken(authentication);
+		Optional<User> user = userRepository.findByEmail(loginRequest.getEmail());
+		if (user.isPresent()) {
+			Authentication authentication = authenticationManager.authenticate(
+					new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
+			SecurityContextHolder.getContext().setAuthentication(authentication);
+			String jwt = jwtUtils.generateJwtToken(authentication);
 
-		UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-		List<String> roles = userDetails.getAuthorities().stream().map(item -> item.getAuthority())
-				.collect(Collectors.toList());
-		return ResponseEntity.ok(
-				new JwtResponse(jwt, userDetails.getId(), userDetails.getFirstName(), userDetails.getEmail(), roles));
+			UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+			List<String> roles = userDetails.getAuthorities().stream().map(item -> item.getAuthority())
+					.collect(Collectors.toList());
+			if (user.get().isEtat() && user.get().getRole().equals(ERole.ROLE_USER))
+				return ResponseEntity.badRequest().body("En Attend l'acceptation de l'admin ");
+
+			return ResponseEntity.ok(new JwtResponse(jwt, userDetails.getId(), userDetails.getFirstName(),
+					userDetails.getEmail(), roles));
+
+		} else {
+			return ResponseEntity.badRequest().body(" Email est incorrecte ");
+		}
+
 	}
 
 	@PostMapping("/register")
@@ -70,7 +80,7 @@ public class UserController {
 		}
 
 		// Create new user's account
-		User user = new User(signUpRequest.getFirstName(),  signUpRequest.getLastName(),  signUpRequest.getEmail(),
+		User user = new User(signUpRequest.getFirstName(), signUpRequest.getLastName(), signUpRequest.getEmail(),
 				encoder.encode(signUpRequest.getPassword()));
 		Role role = null;
 		switch (signUpRequest.getRole()) {

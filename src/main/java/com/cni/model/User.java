@@ -3,6 +3,7 @@ package com.cni.model;
 import java.util.HashSet;
 import java.util.Set;
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
@@ -32,7 +33,10 @@ public class User {
 	private String email;
 	private String password;
 	
-	@OneToOne(fetch = FetchType.LAZY)
+	@Column(name = "etat")
+	private boolean etat = false;
+	
+	@OneToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "role_id", referencedColumnName = "id")
 	private Role role;
 
@@ -105,6 +109,15 @@ public class User {
 	public void setRole(Role role) {
 		this.role = role;
 	}
+
+	public boolean isEtat() {
+		return etat;
+	}
+
+	public void setEtat(boolean etat) {
+		this.etat = etat;
+	}
+	
 	
 	
 }
