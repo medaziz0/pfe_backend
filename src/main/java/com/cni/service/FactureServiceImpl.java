@@ -1,6 +1,7 @@
 package com.cni.service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -74,10 +75,13 @@ public class FactureServiceImpl implements FactureService {
 
 	@Override
 	public boolean deleteByContratId(Integer contratId) {
-		List<FactureEntity> factureList = factureRepository.findAll();
-		List<Integer> factureDeleted = factureList.stream().filter(f->f.getcontrat().getId().equals(contratId)).map(f->f.getId()).peek(id->System.out.println("here idid"+id)).toList();
-		factureRepository.deleteAllById(factureDeleted);
-		return false;
+	    List<FactureEntity> factureList = factureRepository.findAll();
+	    List<Integer> factureDeleted = factureList.stream()
+	        .filter(f -> f.getcontrat().getId().equals(contratId))
+	        .map(f -> f.getId())
+	        .collect(Collectors.toList());  // Updated to use Collectors.toList()
+	    factureRepository.deleteAllById(factureDeleted);
+	    return false;
 	}
 	
 	

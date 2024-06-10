@@ -1,6 +1,7 @@
 package com.cni.service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -74,10 +75,13 @@ public class ContratServiceImpl implements ContratService {
 
 	@Override
 	public boolean deleteContratByAO(Integer IdAO) {
-		List<ContratEntity> contratList = contratRepository.findAll();
-		List<Integer> contratListDelete = contratList.stream().filter(c->c.getappelOffre().getId().equals(IdAO)).map(c->c.getId()).toList();
-		contratListDelete.stream().forEach(c->factureService.deleteByContratId(c));
-		contratRepository.deleteAllById(contratListDelete);
-		return false;
+	    List<ContratEntity> contratList = contratRepository.findAll();
+	    List<Integer> contratListDelete = contratList.stream()
+	        .filter(c -> c.getappelOffre().getId().equals(IdAO))
+	        .map(c -> c.getId())
+	        .collect(Collectors .toList());  // Updated to use Collectors.toList()
+	    contratListDelete.forEach(c -> factureService.deleteByContratId(c));
+	    contratRepository.deleteAllById(contratListDelete);
+	    return false;
 	}
 }

@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.cni.jwt.JwtUtils;
@@ -33,6 +34,7 @@ import com.cni.model.User;
 import com.cni.model.UserDetailsImpl;
 import com.cni.repository.RoleRepository;
 import com.cni.repository.UserRepository;
+import com.cni.service.EmailService;
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -49,6 +51,9 @@ public class UserController {
 	@Autowired
 	JwtUtils jwtUtils;
 
+    @Autowired
+    private EmailService emailService;
+
 	@PostMapping("/login")
 	public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
 		Optional<User> user = userRepository.findByEmail(loginRequest.getEmail());
@@ -61,7 +66,7 @@ public class UserController {
 			UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
 			List<String> roles = userDetails.getAuthorities().stream().map(item -> item.getAuthority())
 					.collect(Collectors.toList());
-			if (user.get().isEtat() && user.get().getRole().equals(ERole.ROLE_USER))
+			if (!user.get().isEtat() && user.get().getRole().getName().equals(ERole.ROLE_USER))
 				return ResponseEntity.badRequest().body("En Attend l'acceptation de l'admin ");
 
 			return ResponseEntity.ok(new JwtResponse(jwt, userDetails.getId(), userDetails.getFirstName(),
@@ -82,18 +87,35 @@ public class UserController {
 		// Create new user's account
 		User user = new User(signUpRequest.getFirstName(), signUpRequest.getLastName(), signUpRequest.getEmail(),
 				encoder.encode(signUpRequest.getPassword()));
-		Role role = null;
-		switch (signUpRequest.getRole()) {
-		case "admin":
-			role = roleRepository.findByName(ERole.ROLE_ADMIN)
-					.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-			break;
-		default:
-			role = roleRepository.findByName(ERole.ROLE_USER)
-					.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-		}
+		Role role = roleRepository.findByName(ERole.ROLE_USER).get();
 		user.setRole(role);
 		userRepository.save(user);
-		return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
+		return ResponseEntity.ok(new MessageResponse("Admin est bien notifié "));
+	}
+	
+	@PostMapping("/forgotPassword")
+    public ResponseEntity<?> forgotPassword(@RequestParam("email")String email) {
+        Optional<User> user = userRepository.findByEmail(email);
+        if (!user.isPresent()) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: Email not found!"));
+        }
+
+        String resetUrl = "http://localhost:4200/#/reset/email/" + email;
+        String subject = "Password Reset Request";
+        String body = "To reset your password, click the link below:\n" + resetUrl;
+
+        emailService.sendMail(user.get().getEmail(), subject, body);
+        emailService.sendMail(email, subject, body);
+        return ResponseEntity.ok(new MessageResponse("Password reset email sent!"));
+    }
+	
+	
+	@PostMapping("/reset")
+	public ResponseEntity<?> resetPassword(@RequestParam("password") String password,@RequestParam("email") String email ) {
+		
+		User user = userRepository.findByEmail(email).get();
+		user.setPassword(encoder.encode(password));
+		userRepository.save(user);
+		return ResponseEntity.ok(new MessageResponse("mod de passe est bien modifié "));
 	}
 }
